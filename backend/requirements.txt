@@ -1,0 +1,8 @@
+flask
+flask-cors
+yfinance
+prophet
+pmdarima
+scikit-learn
+numpy
+pandas

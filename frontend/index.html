@@ -1,0 +1,44 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📈 Stock Dashboard</h1>
+            <p>Real-time stock data with AI-powered predictions</p>
+        </header>
+
+        <div class="search-section">
+            <input 
+                type="text" 
+                id="stockSymbol" 
+                placeholder="Enter stock symbol (e.g., AAPL, TSLA, MSFT)" 
+                onkeypress="handleEnter(event)"
+            >
+            <button onclick="addStock()">Add Stock</button>
+        </div>
+
+        <div id="stockCards" class="stock-cards"></div>
+
+        <div id="chartSection" class="chart-section" style="display: none;">
+            <h2 id="chartTitle"></h2>
+            <div class="chart-controls">
+                <button onclick="showHistory('1mo')" class="active">1 Month</button>
+                <button onclick="showHistory('3mo')">3 Months</button>
+                <button onclick="showHistory('6mo')">6 Months</button>
+                <button onclick="showHistory('1y')">1 Year</button>
+                <button onclick="showPrediction()" class="predict-btn">Show Prediction</button>
+            </div>
+            <canvas id="stockChart"></canvas>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

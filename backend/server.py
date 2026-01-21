@@ -8,7 +8,15 @@ import warnings
 warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "https://dylan-j-henderson.github.io",
+        ]
+    }
+})
 
 @app.route('/api/stock/<symbol>', methods=['GET'])
 def get_stock_data(symbol):

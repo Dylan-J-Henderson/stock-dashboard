@@ -1,9 +1,6 @@
-flask
-flask-cors
-yfinance
-prophet
-pmdarima
-scikit-learn
-numpy
-pandas
-neuralProphet
+flask==3.0.0
+flask-cors==4.0.0
+yfinance==0.2.32
+pandas==2.1.3
+neuralprophet==0.7.0
+gunicorn==21.2.0

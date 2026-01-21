@@ -1,4 +1,4 @@
-const API_URL = 'https://stock-dashboard-t0my.onrender.com';
+const API_URL = 'https://stock-dashboard-t0my.onrender.com/api';
 let stocks = [];
 let currentChart = null;
 let currentSymbol = null;

@@ -5,65 +5,104 @@ import pandas as pd
 from neuralprophet import NeuralProphet
 from datetime import datetime, timedelta
 import warnings
+from functools import lru_cache
+import time
+
 warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
-CORS(app, resources={
-    r"/api/*": {
-        "origins": [
-            "http://localhost:*",
-            "http://127.0.0.1:*",
-            "https://dylan-j-henderson.github.io",
-        ]
-    }
-})
+CORS(app)
+
+# Simple in-memory cache
+cache = {}
+CACHE_DURATION = 60  # Cache for 60 seconds
+
+def get_cached_or_fetch(key, fetch_func, *args):
+    """Simple caching mechanism"""
+    current_time = time.time()
+    
+    if key in cache:
+        data, timestamp = cache[key]
+        if current_time - timestamp < CACHE_DURATION:
+            return data
+    
+    # Fetch new data
+    data = fetch_func(*args)
+    cache[key] = (data, current_time)
+    return data
 
 @app.route('/api/stock/<symbol>', methods=['GET'])
 def get_stock_data(symbol):
-    """Get current stock data"""
+    """Get current stock data with caching"""
     try:
-        stock = yf.Ticker(symbol)
-        info = stock.info
-        hist = stock.history(period='1d')
+        def fetch_stock():
+            # Add a small delay to avoid rate limits
+            time.sleep(0.5)
+            
+            stock = yf.Ticker(symbol)
+            info = stock.info
+            hist = stock.history(period='1d')
+            
+            if hist.empty:
+                return None
+            
+            current_price = hist['Close'].iloc[-1]
+            
+            return {
+                'symbol': symbol.upper(),
+                'name': info.get('longName', symbol),
+                'price': round(current_price, 2),
+                'currency': info.get('currency', 'USD'),
+                'change': round(hist['Close'].iloc[-1] - hist['Open'].iloc[0], 2) if len(hist) > 0 else 0,
+                'changePercent': round(((hist['Close'].iloc[-1] - hist['Open'].iloc[0]) / hist['Open'].iloc[0] * 100), 2) if len(hist) > 0 else 0
+            }
         
-        if hist.empty:
+        data = get_cached_or_fetch(f'stock_{symbol}', fetch_stock)
+        
+        if data is None:
             return jsonify({'error': 'Stock not found'}), 404
         
-        current_price = hist['Close'].iloc[-1]
-        
-        data = {
-            'symbol': symbol.upper(),
-            'name': info.get('longName', symbol),
-            'price': round(current_price, 2),
-            'currency': info.get('currency', 'USD'),
-            'change': round(hist['Close'].iloc[-1] - hist['Open'].iloc[0], 2) if len(hist) > 0 else 0,
-            'changePercent': round(((hist['Close'].iloc[-1] - hist['Open'].iloc[0]) / hist['Open'].iloc[0] * 100), 2) if len(hist) > 0 else 0
-        }
-        
         return jsonify(data)
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_msg = str(e)
+        if '429' in error_msg:
+            return jsonify({'error': 'Rate limit exceeded. Please try again in a minute.'}), 429
+        return jsonify({'error': error_msg}), 500
 
 @app.route('/api/history/<symbol>', methods=['GET'])
 def get_stock_history(symbol):
-    """Get historical stock data"""
+    """Get historical stock data with caching"""
     try:
         period = request.args.get('period', '1mo')
-        stock = yf.Ticker(symbol)
-        hist = stock.history(period=period)
+        cache_key = f'history_{symbol}_{period}'
         
-        if hist.empty:
+        def fetch_history():
+            time.sleep(0.5)
+            stock = yf.Ticker(symbol)
+            hist = stock.history(period=period)
+            
+            if hist.empty:
+                return None
+            
+            return {
+                'dates': hist.index.strftime('%Y-%m-%d').tolist(),
+                'prices': hist['Close'].round(2).tolist(),
+                'volumes': hist['Volume'].tolist()
+            }
+        
+        data = get_cached_or_fetch(cache_key, fetch_history)
+        
+        if data is None:
             return jsonify({'error': 'No historical data found'}), 404
         
-        data = {
-            'dates': hist.index.strftime('%Y-%m-%d').tolist(),
-            'prices': hist['Close'].round(2).tolist(),
-            'volumes': hist['Volume'].tolist()
-        }
-        
         return jsonify(data)
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_msg = str(e)
+        if '429' in error_msg:
+            return jsonify({'error': 'Rate limit exceeded. Please try again in a minute.'}), 429
+        return jsonify({'error': error_msg}), 500
 
 @app.route('/api/predict/<symbol>', methods=['GET'])
 def predict_stock(symbol):
@@ -72,6 +111,7 @@ def predict_stock(symbol):
         days = int(request.args.get('days', 7))
         
         # Get historical data
+        time.sleep(0.5)
         stock = yf.Ticker(symbol)
         hist = stock.history(period='3mo')
         
@@ -119,14 +159,18 @@ def predict_stock(symbol):
         }
         
         return jsonify(result)
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_msg = str(e)
+        if '429' in error_msg:
+            return jsonify({'error': 'Rate limit exceeded. Please try again in a minute.'}), 429
+        return jsonify({'error': error_msg}), 500
 
 @app.route('/api/search/<query>', methods=['GET'])
 def search_stocks(query):
     """Search for stock symbols"""
     try:
-        # Simple search using yfinance
+        time.sleep(0.5)
         ticker = yf.Ticker(query)
         info = ticker.info
         

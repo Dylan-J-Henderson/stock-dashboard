@@ -6,3 +6,4 @@ pmdarima
 scikit-learn
 numpy
 pandas
+neuralProphet

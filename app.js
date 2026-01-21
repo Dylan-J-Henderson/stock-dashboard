@@ -265,4 +265,4 @@ function drawChart(labels, data, title, splitIndex = null) {
             }
         }
     });
-} 
+}
